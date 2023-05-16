@@ -88,3 +88,35 @@ class DynamicTestCase(TestCase):
             format="json",
         )
         self.assertTrue(isinstance(response.data[0]["column2"], str))
+
+    def test_invalid_create_table(self):
+        client = APIClient()
+        columns = [
+            {"name": "column1", "type": "sth"},
+            {"name": "column2", "type": "number"}
+        ]
+        response = client.post(
+            "/api/table/",
+            {"name": "testo", "columns": columns},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+    def test_invalid_update_columns(self):
+        client = APIClient()
+        columns = [
+            {"name": "column1", "type": "text"},
+            {"name": "column2", "type": "number"}
+        ]
+        response = client.post(
+            "/api/table/",
+            {"name": "testo", "columns": columns},
+            format="json",
+        )
+        response = client.put(
+            f"/api/table/{response.data['id']}/",
+            {"name": "testo", "columns": [{"name": "column2", "type": "sth"}]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)

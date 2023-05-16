@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from dynamic.models import Column, DatabaseTable
 from dynamic.utils import migrate_data
@@ -18,6 +19,14 @@ class ColumnSerializer(serializers.ModelSerializer):
     class Meta:
         model = Column
         fields = "__all__"
+
+    def validate(self, attrs):
+        # change from text to number can be not safe
+        if self.context.get("view") and (table_id := self.context['view'].kwargs.get("pk"))\
+                and (column := Column.objects.filter(table_id=table_id, name=attrs["name"]).first()):
+            if column.type == "text" and attrs.get("type"):
+                raise ValidationError("No backward compatibility")
+        return super().validate(attrs)
 
 
 class TableSerializer(serializers.ModelSerializer):
@@ -41,6 +50,8 @@ class TableSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         columns = validated_data.pop("columns")
+        serializer = ColumnSerializer(data=columns, many=True)
+        serializer.is_valid(raise_exception=True)
         columns_to_alter = []
         columns_to_create = []
         for column in columns:
