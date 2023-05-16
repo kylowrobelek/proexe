@@ -2,7 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from dynamic.models import Column, DatabaseTable
-from dynamic.utils import dynamic_modeling
+from dynamic.utils import migrate_data
 
 
 def set_django_serializer_types(value):
@@ -34,10 +34,30 @@ class TableSerializer(serializers.ModelSerializer):
         serializer = ColumnSerializer(data=columns, many=True)
         serializer.is_valid(raise_exception=True)
         for column in columns:
-            column['table_id'] = table.id
+            column["table_id"] = table.id
             Column.objects.create(**column)
-        dynamic_modeling(table.name, columns)
+        migrate_data(name=table.name, action="CREATE", fields=columns, app_label=__package__.rsplit('.', 1)[-1])
         return table
+
+    def update(self, instance, validated_data):
+        columns = validated_data.pop("columns")
+        columns_to_alter = []
+        columns_to_create = []
+        for column in columns:
+            query = Column.objects.filter(table_id=instance.id, name=column.get("name"))
+            if query.exists():
+                old_column = query.first()
+                columns_to_alter.append({"name": column.get("name"), "type": column.get("type"),
+                                    "old_type": old_column.type})
+                query.update(type=column.get("type"))
+            else:
+                columns_to_create.append(column)
+                column["table_id"] = instance.id
+                Column.objects.create(**column)
+        migrate_data(columns_to_alter+columns_to_create, instance.name, action="UPDATE",
+                     fields_to_create=columns_to_create, fields_to_update=columns_to_alter,
+                     app_label=__package__.rsplit('.', 1)[-1])
+        return instance
 
 
 class DynamicSerializer(serializers.ModelSerializer):

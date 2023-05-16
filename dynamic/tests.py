@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from dynamic.models import Column, DatabaseTable
-from dynamic.utils import dynamic_modeling
+from dynamic.utils import create_model_schema
 
 
 class DynamicTestCase(TestCase):
@@ -31,5 +31,60 @@ class DynamicTestCase(TestCase):
             {"name": "testtable", "columns": columns},
             format="json",
         )
-        Model = dynamic_modeling("testtable", columns)
+        app_label = __package__.rsplit('.', 1)[-1]
+        Model = create_model_schema(name="testtable", fields=columns, app_label=app_label)
         self.assertEqual(Model.objects.count(), 0)
+
+    def test_adding_row_and_retrieve(self):
+        client = APIClient()
+        columns = [
+            {"name": "column1", "type": "text"},
+            {"name": "column2", "type": "number"}
+        ]
+        response = client.post(
+            "/api/table/",
+            {"name": "testo", "columns": columns},
+            format="json",
+        )
+        app_label = __package__.rsplit('.', 1)[-1]
+        Model = create_model_schema(name="testo", fields=columns, app_label=app_label)
+        self.assertEqual(Model.objects.count(), 0)
+        client.post(
+            f"/api/table/{response.data['id']}/row/",
+            {"column1": "testoooo", "column2": 2},
+            format="json",
+        )
+        self.assertEqual(Model.objects.count(), 1)
+        self.assertEqual(Model.objects.first().column1, "testoooo")
+        response = client.get(
+            f"/api/table/{response.data['id']}/rows/",
+            format="json",
+        )
+        self.assertEqual(response.data[0]["column1"], "testoooo")
+
+    def test_update_columns(self):
+        client = APIClient()
+        columns = [
+            {"name": "column1", "type": "text"},
+            {"name": "column2", "type": "number"}
+        ]
+        response = client.post(
+            "/api/table/",
+            {"name": "testo", "columns": columns},
+            format="json",
+        )
+        client.post(
+            f"/api/table/{response.data['id']}/row/",
+            {"column1": "testoooo", "column2": 2},
+            format="json",
+        )
+        client.put(
+            f"/api/table/{response.data['id']}/",
+            {"name": "testo", "columns": [{"name": "column2", "type": "text"}]},
+            format="json",
+        )
+        response = client.get(
+            f"/api/table/{response.data['id']}/rows/",
+            format="json",
+        )
+        self.assertTrue(isinstance(response.data[0]["column2"], str))

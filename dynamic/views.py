@@ -26,11 +26,8 @@ class DynamicTablesViewSet(
 
     def get_django_model(self, pk):
         table_name = self.get_object().name
-        columns = Column.objects.filter(table_id=pk).values_list("name", "type")
-        fields = {}
-        for data in columns:
-            fields[data[0]] = set_django_types(data[1])
-        return create_model_schema(table_name, action="GET", fields=fields, app_label="dynamic", module="dynamic")
+        columns = list(Column.objects.filter(table_id=pk).values("name", "type"))
+        return create_model_schema(table_name, fields=columns, app_label=__package__.rsplit('.', 1)[-1])
 
     @action(detail=True, methods=("post",))
     def row(self, request, pk):
