@@ -15,7 +15,13 @@ class DatabaseTable(models.Model):
 
 
 class Column(models.Model):
-    table = models.ForeignKey(DatabaseTable, related_name="columns", on_delete=models.CASCADE, null=True, blank=True)
+    table = models.ForeignKey(
+        DatabaseTable,
+        related_name="columns",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     name = models.CharField(max_length=255)
     type = models.CharField(
         choices=ColumnTypes.choices, max_length=15, default=ColumnTypes.BOOL

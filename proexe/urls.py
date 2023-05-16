@@ -20,6 +20,6 @@ from django.urls import include, path
 from dynamic.urls import router
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
     path("api/", include((router.urls, "dynamic"))),
 ]

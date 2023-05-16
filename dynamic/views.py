@@ -4,7 +4,11 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.response import Response
 
 from dynamic.models import DatabaseTable, Column
-from dynamic.serializers import DynamicSerializer, TableSerializer, set_django_serializer_types
+from dynamic.serializers import (
+    DynamicSerializer,
+    TableSerializer,
+    set_django_serializer_types,
+)
 from dynamic.utils import create_model_schema, set_django_types
 
 
@@ -12,8 +16,8 @@ class DynamicTablesViewSet(
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.CreateModelMixin,
-    GenericViewSet):
-
+    GenericViewSet,
+):
     serializer_class = TableSerializer
     queryset = DatabaseTable.objects.all()
 
@@ -27,7 +31,9 @@ class DynamicTablesViewSet(
     def get_django_model(self, pk):
         table_name = self.get_object().name
         columns = list(Column.objects.filter(table_id=pk).values("name", "type"))
-        return create_model_schema(table_name, fields=columns, app_label=__package__.rsplit('.', 1)[-1])
+        return create_model_schema(
+            table_name, fields=columns, app_label=__package__.rsplit(".", 1)[-1]
+        )
 
     @action(detail=True, methods=("post",))
     def row(self, request, pk):
